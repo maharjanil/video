@@ -21,10 +21,6 @@
       padding: 2rem;
       max-width: 700px;
       margin: 0 auto;
-      transition: transform 0.3s ease;
-    }
-    .search-card:hover {
-      transform: translateY(-4px);
     }
     h1 {
       font-weight: 600;
@@ -55,32 +51,65 @@
     #searchBtn:hover {
       background: #3a56e0;
     }
-    .video-container {
-      margin-top: 2.2rem;
-      display: none;
-      animation: fadeIn 0.5s ease forwards;
+    .results-list {
+      margin-top: 1.5rem;
+      max-height: 300px;
+      overflow-y: auto;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+    .result-item {
+      padding: 0.85rem;
+      border-radius: 10px;
+      margin-bottom: 0.6rem;
+      background: #f8f9ff;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid #e9ecef;
+    }
+    .result-item:hover {
+      background: #edf2ff;
+      border-color: #cbd5ff;
+    }
+    .result-source {
+      font-size: 0.82rem;
+      color: #6c757d;
+      margin-top: 0.25rem;
     }
     .no-results {
       display: none;
       text-align: center;
-      margin-top: 2rem;
-      color: #7f8c8d;
-      font-style: italic;
-    }
-    .video-embed {
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      margin-top: 1.5rem;
+      color: #e74c3c;
     }
     .footer-note {
       text-align: center;
       margin-top: 2rem;
       color: #95a5a6;
       font-size: 0.85rem;
+    }
+
+    /* Modal styling */
+    #videoModal .modal-content {
+      border-radius: 16px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+    }
+    #videoModal .modal-header {
+      border: none;
+      padding-bottom: 0;
+    }
+    #videoModal .modal-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+    #videoModal .btn-close {
+      width: 30px;
+      height: 30px;
+      opacity: 1;
+    }
+    #videoModal .ratio {
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
   </style>
 </head>
@@ -93,7 +122,7 @@
           type="text"
           id="searchBox"
           class="form-control"
-          placeholder="Search by title (e.g., animation, career...)"
+          placeholder="Enter video title or keyword..."
           autocomplete="off"
         />
         <button id="searchBtn" class="btn text-white">
@@ -101,27 +130,40 @@
         </button>
       </div>
 
-      <div id="videoContainer" class="video-container">
-        <div class="ratio ratio-16x9 video-embed">
-          <iframe id="videoFrame" src="" allowfullscreen></iframe>
-        </div>
-      </div>
+      <div id="resultsContainer" class="results-list" style="display: none;"></div>
 
       <div id="noResults" class="no-results">
-        <p><i class="fas fa-frown me-1"></i> No video found. Try another keyword.</p>
+        <p><i class="fas fa-frown me-1"></i> No videos found.</p>
       </div>
     </div>
 
     <div class="footer-note">
-      Supports YouTube (public/unlisted) & Google Drive (public) videos
+      Search requires exact match or partial keyword. Click "Search" to begin.
     </div>
   </div>
 
-  <!-- Bootstrap + Icons -->
+  <!-- Video Modal -->
+  <div class="modal fade" id="videoModal" tabindex="-1" aria-labelledby="videoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="videoModalLabel">Video</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="ratio ratio-16x9">
+            <iframe id="videoFrame" src="" allowfullscreen></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    // 🎥 Your video library — mix YouTube & Google Drive
+    // 🎥 Your video library — duplicates allowed!
     const videos = [
       {
         title: "Animation as a Career",
@@ -137,20 +179,31 @@
         title: "How to Use Reference Videos?",
         type: "youtube",
         url: "https://youtu.be/vR57xYTQa_E" // replace with your unlisted/public link
+      },
+      {
+        title: "Import video reference into Maya",
+        type: "youtube",
+        url: "https://youtu.be/0w7_5UfrmHE"
+      },
+      {
+        title: "Animation as a Career",
+        type: "drive",
+        id: "1D2eXhun3BpgQkUwgXqupLIzEfU4W6ikT"
+      },
+      {
+        title: "Unlock the Secret to Perfect Splining Animation!",
+        type: "youtube",
+        url: "https://youtu.be/Z6SSW5Kw9yo"
       }
-
-      
       // Add more as needed
     ];
 
-    // Extract YouTube ID
     function getYouTubeId(url) {
       const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
       const match = url.match(regExp);
       return (match && match[2].length === 11) ? match[2] : null;
     }
 
-    // Get embed URL
     function getEmbedUrl(video) {
       if (video.type === "youtube") {
         const id = getYouTubeId(video.url);
@@ -161,43 +214,78 @@
       return null;
     }
 
+    function getSourceLabel(type) {
+      return type === "youtube" ? "YouTube" : "Google Drive";
+    }
+
     // DOM
     const searchBox = document.getElementById('searchBox');
     const searchBtn = document.getElementById('searchBtn');
-    const videoContainer = document.getElementById('videoContainer');
-    const videoFrame = document.getElementById('videoFrame');
+    const resultsContainer = document.getElementById('resultsContainer');
     const noResults = document.getElementById('noResults');
+    const videoFrame = document.getElementById('videoFrame');
+    const videoModalLabel = document.getElementById('videoModalLabel');
+    const modal = new bootstrap.Modal(document.getElementById('videoModal'));
 
-    function performSearch() {
+    // Close video on modal close
+    document.getElementById('videoModal').addEventListener('hidden.bs.modal', () => {
+      videoFrame.src = '';
+    });
+
+    // Handle result click
+    function handleResultClick(video) {
+      const embedUrl = getEmbedUrl(video);
+      if (embedUrl) {
+        videoModalLabel.textContent = video.title;
+        videoFrame.src = embedUrl;
+        modal.show();
+        // Hide results after selection
+        resultsContainer.style.display = 'none';
+        noResults.style.display = 'none';
+      }
+    }
+
+    // 🔍 SEARCH on BUTTON CLICK only
+    searchBtn.addEventListener('click', () => {
       const query = searchBox.value.trim().toLowerCase();
       if (!query) {
-        videoContainer.style.display = 'none';
+        resultsContainer.style.display = 'none';
         noResults.style.display = 'none';
         return;
       }
 
-      const match = videos.find(v => v.title.toLowerCase().includes(query));
-      if (match) {
-        const embedUrl = getEmbedUrl(match);
-        if (embedUrl) {
-          videoFrame.src = embedUrl;
-          videoContainer.style.display = 'block';
-          noResults.style.display = 'none';
-        } else {
-          noResults.innerText = 'Invalid video source.';
-          noResults.style.display = 'block';
-          videoContainer.style.display = 'none';
-        }
-      } else {
-        videoContainer.style.display = 'none';
-        noResults.style.display = 'block';
-      }
-    }
+      // Find ALL matches (not just first)
+      const matches = videos.filter(v => v.title.toLowerCase().includes(query));
 
-    searchBox.addEventListener('input', performSearch);
-    searchBtn.addEventListener('click', performSearch);
+      if (matches.length === 0) {
+        resultsContainer.style.display = 'none';
+        noResults.style.display = 'block';
+      } else if (matches.length === 1) {
+        // Only one match → open directly
+        handleResultClick(matches[0]);
+        resultsContainer.style.display = 'none';
+        noResults.style.display = 'none';
+      } else {
+        // Multiple matches → show list
+        resultsContainer.innerHTML = '';
+        matches.forEach(video => {
+          const div = document.createElement('div');
+          div.className = 'result-item';
+          div.innerHTML = `
+            <strong>${video.title}</strong>
+            <div class="result-source">Source: ${getSourceLabel(video.type)}</div>
+          `;
+          div.addEventListener('click', () => handleResultClick(video));
+          resultsContainer.appendChild(div);
+        });
+        resultsContainer.style.display = 'block';
+        noResults.style.display = 'none';
+      }
+    });
+
+    // Also allow Enter key to trigger search
     searchBox.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') performSearch();
+      if (e.key === 'Enter') searchBtn.click();
     });
   </script>
 </body>
