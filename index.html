@@ -11,9 +11,12 @@
     body {
       background: linear-gradient(135deg, #f5f7fa 0%, #e4edf9 100%);
       min-height: 100vh;
-      padding-top: 2rem;
+      margin: 0;
       font-family: 'Segoe UI', system-ui, sans-serif;
       overflow-x: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
     .search-card {
       background: white;
@@ -21,7 +24,7 @@
       box-shadow: 0 6px 20px rgba(0,0,0,0.08);
       padding: 2rem;
       max-width: 700px;
-      margin: 0 auto;
+      width: 90%;
     }
     h1 {
       font-weight: 600;
@@ -88,12 +91,12 @@
     }
     .footer-note {
       text-align: center;
-      margin-top: 2rem;
+      margin-top: 1.5rem;
       color: #95a5a6;
       font-size: 0.85rem;
     }
 
-    /* 🔥 Fully Transparent Video Overlay */
+    /* 🔥 Transparent Video Overlay */
     #videoOverlay {
       position: fixed;
       top: 0;
@@ -109,39 +112,40 @@
 
     #videoOverlay.active {
       display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding-top: 40px;
+    }
+
+    #videoOverlay .video-title {
+      color: black;
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      text-align: center;
+      padding: 0 20px;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      pointer-events: none;
     }
 
     #videoOverlay iframe {
       width: 90vw;
       height: 50.625vw; /* 16:9 */
       max-width: 90vw;
-      max-height: 90vh;
+      max-height: 80vh;
       border: none;
       border-radius: 8px;
-    }
-
-    #videoOverlay .video-title {
-      position: absolute;
-      top: 20px;
-      left: 0;
-      width: 100%;
-      text-align: center;
-      color: black;
-      font-size: 1.4rem;
-      font-weight: 600;
-      opacity: 0;
-      transition: opacity 0.25s ease;
-      padding: 0 20px;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.2);
-      pointer-events: none;
     }
 
     #videoOverlay .close-btn {
       position: absolute;
       top: 15px;
       right: 20px;
-      background: none; /* ✅ No background */
-      color: black;     /* ✅ Black "×" */
+      background: none;
+      color: black;
       width: 32px;
       height: 32px;
       border: none;
@@ -154,7 +158,6 @@
       opacity: 0;
       transition: opacity 0.25s ease;
       outline: none;
-      border-radius: 0; /* no rounding */
     }
 
     #videoOverlay:hover .video-title,
@@ -164,36 +167,34 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="search-card">
-      <h1><i class="fas fa-play-circle me-2 text-primary"></i>Video Library</h1>
-      <div class="position-relative">
-        <input
-          type="text"
-          id="searchBox"
-          class="form-control"
-          placeholder="Type to search videos..."
-          autocomplete="off"
-        />
-        <button id="clearBtn" class="btn">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-
-      <div id="resultsContainer" class="results-list" style="display: none;"></div>
-      <div id="noResults" class="no-results"></div>
+  <div class="search-card">
+    <h1><i class="fas fa-play-circle me-2 text-primary"></i>Video Library</h1>
+    <div class="position-relative">
+      <input
+        type="text"
+        id="searchBox"
+        class="form-control"
+        placeholder="Type to search videos..."
+        autocomplete="off"
+      />
+      <button id="clearBtn" class="btn">
+        <i class="fas fa-times"></i>
+      </button>
     </div>
+
+    <div id="resultsContainer" class="results-list" style="display: none;"></div>
+    <div id="noResults" class="no-results"></div>
 
     <div class="footer-note">
       <!-- Supports YouTube (public/unlisted) & Google Drive (public) videos -->
     </div>
   </div>
 
-  <!-- 🔥 Transparent Overlay with Minimal Controls -->
+  <!-- 🔥 Transparent Overlay -->
   <div id="videoOverlay">
     <div class="video-title" id="overlayTitle">Video</div>
-    <button class="close-btn" id="overlayClose">&times;</button>
     <iframe id="overlayFrame" allowfullscreen></iframe>
+    <button class="close-btn" id="overlayClose">&times;</button>
   </div>
 
   <script>
@@ -256,7 +257,7 @@
       return type === "youtube" ? "YouTube" : "Google Drive";
     }
 
-    // DOM Elements
+    // DOM
     const searchBox = document.getElementById('searchBox');
     const clearBtn = document.getElementById('clearBtn');
     const resultsContainer = document.getElementById('resultsContainer');
@@ -342,6 +343,13 @@
         if (matches.length > 0) {
           handleResultClick(matches[0]);
         }
+      }
+    });
+
+    // Optional: Close overlay with Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && overlay.classList.contains('active')) {
+        hideVideoOverlay();
       }
     });
   </script>
