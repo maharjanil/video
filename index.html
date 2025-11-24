@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Video Library</title>
-  <!-- Bootstrap 5 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
@@ -96,7 +95,7 @@
       font-size: 0.85rem;
     }
 
-    /* 🔥 Transparent Video Overlay */
+    /* 🔥 Video Overlay */
     #videoOverlay {
       position: fixed;
       top: 0;
@@ -105,17 +104,23 @@
       height: 100vh;
       background: transparent;
       display: none;
-      justify-content: center;
+      justify-content: flex-start;
       align-items: center;
+      flex-direction: column;
+      padding-top: 40px;
       z-index: 1050;
     }
 
     #videoOverlay.active {
       display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: center;
-      padding-top: 40px;
+    }
+
+    #videoOverlay .video-container {
+      position: relative;
+      width: 80vw;
+      height: auto;
+      max-width: 90vw;
+      max-height: 80vh;
     }
 
     #videoOverlay .video-title {
@@ -132,18 +137,18 @@
     }
 
     #videoOverlay iframe {
-      width: 90vw;
-      height: 50.625vw; /* 16:9 */
-      max-width: 90vw;
-      max-height: 80vh;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 9;
       border: none;
       border-radius: 8px;
+      display: block;
     }
 
     #videoOverlay .close-btn {
       position: absolute;
-      top: 15px;
-      right: 20px;
+      top: -32px;
+      right: -10px;
       background: none;
       color: black;
       width: 32px;
@@ -160,8 +165,24 @@
       outline: none;
     }
 
+    /* 🔧 Resize Handle */
+    #videoOverlay .resize-handle {
+      position: absolute;
+      bottom: -8px;
+      right: -8px;
+      width: 20px;
+      height: 20px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 3px;
+      cursor: nwse-resize;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      z-index: 10;
+    }
+
     #videoOverlay:hover .video-title,
-    #videoOverlay:hover .close-btn {
+    #videoOverlay:hover .close-btn,
+    #videoOverlay:hover .resize-handle {
       opacity: 1;
     }
   </style>
@@ -190,51 +211,26 @@
     </div>
   </div>
 
-  <!-- 🔥 Transparent Overlay -->
+  <!-- 🔥 Overlay -->
   <div id="videoOverlay">
     <div class="video-title" id="overlayTitle">Video</div>
-    <iframe id="overlayFrame" allowfullscreen></iframe>
-    <button class="close-btn" id="overlayClose">&times;</button>
+    <div class="video-container" id="videoContainer">
+      <iframe id="overlayFrame" allowfullscreen></iframe>
+      <button class="close-btn" id="overlayClose">&times;</button>
+      <div class="resize-handle" id="resizeHandle"></div>
+    </div>
   </div>
 
   <script>
-    // 🎥 Video library
+    // 🎥 Videos
     const videos = [
-      {
-        title: "Animation as a Career",
-        type: "drive",
-        id: "1D2eXhun3BpgQkUwgXqupLIzEfU4W6ikT"
-      },
-      {
-        title: "Walk Cycle",
-        type: "youtube",
-        url: "https://www.youtube.com/watch?v=STjKkhROdWE"
-      },
-      {
-        title: "How to Use Reference Videos?",
-        type: "youtube",
-        url: "https://youtu.be/vR57xYTQa_E"
-      },
-      {
-        title: "Import video reference into Maya",
-        type: "youtube",
-        url: "https://youtu.be/0w7_5UfrmHE"
-      },
-      {
-        title: "Unlock the Secret to Perfect Splining Animation!",
-        type: "youtube",
-        url: "https://youtu.be/Z6SSW5Kw9yo"
-      },
-      {
-        title: "Animation Blocking - You are doing it Wrong! - Part 1",
-        type: "youtube",
-        url: "https://youtu.be/xJ7hmvbl_1c?si=pHyJ25vufillI-Hf"
-      },
-      {
-        title: "Animation Blocking - Cheet Sheet - Part 2",
-        type: "youtube",
-        url: "https://youtu.be/M3hGbCfb_r8?si=IEj3PMnPPkXStwFP"
-      }
+      { title: "Animation as a Career", type: "drive", id: "1D2eXhun3BpgQkUwgXqupLIzEfU4W6ikT" },
+      { title: "Walk Cycle", type: "youtube", url: "https://www.youtube.com/watch?v=STjKkhROdWE" },
+      { title: "How to Use Reference Videos?", type: "youtube", url: "https://youtu.be/vR57xYTQa_E" },
+      { title: "Import video reference into Maya", type: "youtube", url: "https://youtu.be/0w7_5UfrmHE" },
+      { title: "Unlock the Secret to Perfect Splining Animation!", type: "youtube", url: "https://youtu.be/Z6SSW5Kw9yo" },
+      { title: "Animation Blocking - You are doing it Wrong! - Part 1", type: "youtube", url: "https://youtu.be/xJ7hmvbl_1c?si=pHyJ25vufillI-Hf" },
+      { title: "Animation Blocking - Cheet Sheet - Part 2", type: "youtube", url: "https://youtu.be/M3hGbCfb_r8?si=IEj3PMnPPkXStwFP" }
     ];
 
     function getYouTubeId(url) {
@@ -253,10 +249,6 @@
       return null;
     }
 
-    function getSourceLabel(type) {
-      return type === "youtube" ? "YouTube" : "Google Drive";
-    }
-
     // DOM
     const searchBox = document.getElementById('searchBox');
     const clearBtn = document.getElementById('clearBtn');
@@ -266,6 +258,8 @@
     const overlayFrame = document.getElementById('overlayFrame');
     const overlayTitle = document.getElementById('overlayTitle');
     const overlayClose = document.getElementById('overlayClose');
+    const videoContainer = document.getElementById('videoContainer');
+    const resizeHandle = document.getElementById('resizeHandle');
 
     function clearSearch() {
       searchBox.value = '';
@@ -311,9 +305,7 @@
         noResults.style.display = 'none';
         return;
       }
-
       const matches = videos.filter(v => v.title.toLowerCase().includes(query));
-
       if (matches.length === 0) {
         noResults.textContent = 'No videos found.';
         noResults.style.display = 'block';
@@ -335,6 +327,10 @@
       }
     }
 
+    function getSourceLabel(type) {
+      return type === "youtube" ? "YouTube" : "Google Drive";
+    }
+
     searchBox.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         const matches = videos.filter(v => 
@@ -346,11 +342,45 @@
       }
     });
 
-    // Optional: Close overlay with Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && overlay.classList.contains('active')) {
         hideVideoOverlay();
       }
+    });
+
+    // 🔧 Resize Logic
+    let isResizing = false;
+    let startX, startWidth, startY, startHeight;
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      const rect = videoContainer.getBoundingClientRect();
+      startWidth = rect.width;
+      startHeight = rect.height;
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      
+      let newWidth = startWidth + dx;
+      let newHeight = startHeight + dy;
+      
+      // Enforce min and max sizes
+      newWidth = Math.max(320, Math.min(newWidth, window.innerWidth * 0.95));
+      newHeight = Math.max(180, Math.min(newHeight, window.innerHeight * 0.8));
+      
+      videoContainer.style.width = newWidth + 'px';
+      videoContainer.style.height = newHeight + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      isResizing = false;
     });
   </script>
 </body>
