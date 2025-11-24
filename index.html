@@ -104,10 +104,8 @@
       height: 100vh;
       background: transparent;
       display: none;
-      justify-content: flex-start;
+      justify-content: center;
       align-items: center;
-      flex-direction: column;
-      padding-top: 40px;
       z-index: 1050;
     }
 
@@ -117,29 +115,30 @@
 
     #videoOverlay .video-container {
       position: relative;
-      width: 80vw;
-      height: auto;
-      max-width: 90vw;
-      max-height: 80vh;
+      width: 967px;   /* ✅ Fixed default width */
+      height: 544px;  /* ✅ Fixed default height */
+      max-width: 95vw;
+      max-height: 90vh;
     }
 
     #videoOverlay .video-title {
+      position: absolute;
+      top: -40px;
+      left: 0;
+      width: 100%;
+      text-align: center;
       color: black;
       font-size: 1.4rem;
       font-weight: 600;
-      margin-bottom: 16px;
       opacity: 0;
       transition: opacity 0.25s ease;
-      text-align: center;
-      padding: 0 20px;
       text-shadow: 0 1px 3px rgba(0,0,0,0.2);
       pointer-events: none;
     }
 
     #videoOverlay iframe {
       width: 100%;
-      height: auto;
-      aspect-ratio: 16 / 9;
+      height: 100%;
       border: none;
       border-radius: 8px;
       display: block;
@@ -185,6 +184,15 @@
     #videoOverlay:hover .resize-handle {
       opacity: 1;
     }
+
+    /* Ensure container respects max size on small screens */
+    @media (max-width: 1024px) {
+      #videoOverlay .video-container {
+        width: 90vw;
+        height: auto;
+        aspect-ratio: 16 / 9;
+      }
+    }
   </style>
 </head>
 <body>
@@ -213,8 +221,8 @@
 
   <!-- 🔥 Overlay -->
   <div id="videoOverlay">
-    <div class="video-title" id="overlayTitle">Video</div>
     <div class="video-container" id="videoContainer">
+      <div class="video-title" id="overlayTitle">Video</div>
       <iframe id="overlayFrame" allowfullscreen></iframe>
       <button class="close-btn" id="overlayClose">&times;</button>
       <div class="resize-handle" id="resizeHandle"></div>
@@ -247,6 +255,10 @@
         return `https://drive.google.com/file/d/${video.id}/preview`;
       }
       return null;
+    }
+
+    function getSourceLabel(type) {
+      return type === "youtube" ? "YouTube" : "Google Drive";
     }
 
     // DOM
@@ -327,10 +339,6 @@
       }
     }
 
-    function getSourceLabel(type) {
-      return type === "youtube" ? "YouTube" : "Google Drive";
-    }
-
     searchBox.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         const matches = videos.filter(v => 
@@ -348,7 +356,7 @@
       }
     });
 
-    // 🔧 Resize Logic
+    // 🔧 Resize Logic (optional: user can still drag to resize)
     let isResizing = false;
     let startX, startWidth, startY, startHeight;
 
@@ -371,7 +379,7 @@
       let newWidth = startWidth + dx;
       let newHeight = startHeight + dy;
       
-      // Enforce min and max sizes
+      // Enforce reasonable limits
       newWidth = Math.max(320, Math.min(newWidth, window.innerWidth * 0.95));
       newHeight = Math.max(180, Math.min(newHeight, window.innerHeight * 0.8));
       
