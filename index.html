@@ -115,8 +115,8 @@
 
     #videoOverlay .video-container {
       position: relative;
-      width: 967px;   /* ✅ Fixed default width */
-      height: 544px;  /* ✅ Fixed default height */
+      width: 967px;
+      height: 544px;
       max-width: 95vw;
       max-height: 90vh;
     }
@@ -164,7 +164,6 @@
       outline: none;
     }
 
-    /* 🔧 Resize Handle */
     #videoOverlay .resize-handle {
       position: absolute;
       bottom: -8px;
@@ -185,13 +184,40 @@
       opacity: 1;
     }
 
-    /* Ensure container respects max size on small screens */
     @media (max-width: 1024px) {
       #videoOverlay .video-container {
         width: 90vw;
         height: auto;
         aspect-ratio: 16 / 9;
       }
+    }
+
+    /* 🔒 Password Modal */
+    #passwordModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+    #passwordModal .modal-content {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+    #passwordError {
+      display: none;
+      color: #e74c3c;
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
     }
   </style>
 </head>
@@ -219,7 +245,7 @@
     </div>
   </div>
 
-  <!-- 🔥 Overlay -->
+  <!-- 🔥 Video Overlay -->
   <div id="videoOverlay">
     <div class="video-container" id="videoContainer">
       <div class="video-title" id="overlayTitle">Video</div>
@@ -229,11 +255,24 @@
     </div>
   </div>
 
+  <!-- 🔒 Password Modal -->
+  <div id="passwordModal">
+    <div class="modal-content">
+      <h5 class="mb-3"><i class="fas fa-lock me-2"></i>Enter Password</h5>
+      <input type="password" id="videoPassword" class="form-control" placeholder="Password" autocomplete="off">
+      <p id="passwordError">Incorrect password. Please try again.</p>
+      <div class="d-flex justify-content-between mt-3">
+        <button id="cancelPassword" class="btn btn-secondary btn-sm">Cancel</button>
+        <button id="submitPassword" class="btn btn-primary btn-sm">Unlock Video</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // 🎥 Videos
+    // 🎥 Videos — only "Animation as a Career" is password-protected
     const videos = [
-      { title: "Animation as a Career", type: "drive", id: "1D2eXhun3BpgQkUwgXqupLIzEfU4W6ikT" },
-      { title: "Walk Cycle | Rusty Animator", type: "youtube", url: "https://www.youtube.com/watch?v=STjKkhROdWE" },
+      { title: "Animation as a Career", type: "drive", id: "1D2eXhun3BpgQkUwgXqupLIzEfU4W6ikT", protected: true },
+      { title: "Walk Cycle | Rusty Animator", type: "youtube", url: "https://www.youtube.com/watch?v=STjKkhROdWE", protected: false},
       { title: "How to Use Reference Videos? | Koushik Chatterjee", type: "youtube", url: "https://youtu.be/vR57xYTQa_E" },
       { title: "Import video reference into Maya | Koushik Chatterjee", type: "youtube", url: "https://youtu.be/0w7_5UfrmHE" },
       { title: "Unlock the Secret to Perfect Splining Animation! | Koushik Chatterjee", type: "youtube", url: "https://youtu.be/Z6SSW5Kw9yo" },
@@ -245,6 +284,8 @@
       { title: "Adding Path to Your Animation | Maya Motion Path ", type: "youtube", url: "https://youtu.be/RKA09A_tJt4" },
       { title: "Blocking workflow & simplifying animations | Koushik Chatterjee", type: "youtube", url: "https://youtu.be/rWxeZbwEV70" }
     ];
+
+    const VIDEO_PASSWORD = "Animator"; // 🔑 Change this to your desired password
 
     function getYouTubeId(url) {
       const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -266,7 +307,7 @@
       return type === "youtube" ? "YouTube" : "Google Drive";
     }
 
-    // DOM
+    // DOM Elements
     const searchBox = document.getElementById('searchBox');
     const clearBtn = document.getElementById('clearBtn');
     const resultsContainer = document.getElementById('resultsContainer');
@@ -277,6 +318,13 @@
     const overlayClose = document.getElementById('overlayClose');
     const videoContainer = document.getElementById('videoContainer');
     const resizeHandle = document.getElementById('resizeHandle');
+    const passwordModal = document.getElementById('passwordModal');
+    const videoPassword = document.getElementById('videoPassword');
+    const submitPassword = document.getElementById('submitPassword');
+    const cancelPassword = document.getElementById('cancelPassword');
+    const passwordError = document.getElementById('passwordError');
+
+    let pendingProtectedVideo = null;
 
     function clearSearch() {
       searchBox.value = '';
@@ -292,6 +340,30 @@
       clearSearch();
     }
 
+    function playVideoInOverlay(video) {
+      const embedUrl = getEmbedUrl(video);
+      if (embedUrl) {
+        overlayTitle.textContent = video.title;
+        overlayFrame.src = embedUrl;
+        overlay.classList.add('active');
+        resultsContainer.style.display = 'none';
+        noResults.style.display = 'none';
+      }
+    }
+
+    function handleResultClick(video) {
+      if (video.protected) {
+        pendingProtectedVideo = video;
+        passwordModal.style.display = 'flex';
+        videoPassword.value = '';
+        passwordError.style.display = 'none';
+        videoPassword.focus();
+      } else {
+        playVideoInOverlay(video);
+      }
+    }
+
+    // Event Listeners
     overlayClose.addEventListener('click', hideVideoOverlay);
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) hideVideoOverlay();
@@ -303,17 +375,6 @@
       clearBtn.style.display = searchBox.value.trim() ? 'block' : 'none';
       performSearch();
     });
-
-    function handleResultClick(video) {
-      const embedUrl = getEmbedUrl(video);
-      if (embedUrl) {
-        overlayTitle.textContent = video.title;
-        overlayFrame.src = embedUrl;
-        overlay.classList.add('active');
-        resultsContainer.style.display = 'none';
-        noResults.style.display = 'none';
-      }
-    }
 
     function performSearch() {
       const query = searchBox.value.trim().toLowerCase();
@@ -336,6 +397,7 @@
           div.innerHTML = `
             <strong>${video.title}</strong>
             <div class="result-source">Source: ${getSourceLabel(video.type)}</div>
+            ${video.protected ? '<span class="badge bg-warning text-dark ms-1">🔒</span>' : ''}
           `;
           div.addEventListener('click', () => handleResultClick(video));
           resultsContainer.appendChild(div);
@@ -356,44 +418,76 @@
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && overlay.classList.contains('active')) {
-        hideVideoOverlay();
+      if (e.key === 'Escape') {
+        if (overlay.classList.contains('active')) {
+          hideVideoOverlay();
+        } else if (passwordModal.style.display === 'flex') {
+          passwordModal.style.display = 'none';
+          pendingProtectedVideo = null;
+        }
       }
     });
 
-    // 🔧 Resize Logic (optional: user can still drag to resize)
+    // Password handling
+    submitPassword.addEventListener('click', validatePassword);
+    videoPassword.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') validatePassword();
+    });
+
+    cancelPassword.addEventListener('click', () => {
+      passwordModal.style.display = 'none';
+      pendingProtectedVideo = null;
+    });
+
+    function validatePassword() {
+      if (videoPassword.value === VIDEO_PASSWORD) {
+        passwordModal.style.display = 'none';
+        if (pendingProtectedVideo) {
+          playVideoInOverlay(pendingProtectedVideo);
+          pendingProtectedVideo = null;
+        }
+      } else {
+        passwordError.style.display = 'block';
+        setTimeout(() => passwordError.style.display = 'none', 2000);
+      }
+    }
+
+    // Resize logic
     let isResizing = false;
-    let startX, startWidth, startY, startHeight;
-
     resizeHandle.addEventListener('mousedown', (e) => {
+      if ('ontouchstart' in window) return;
       isResizing = true;
-      startX = e.clientX;
-      startY = e.clientY;
-      const rect = videoContainer.getBoundingClientRect();
-      startWidth = rect.width;
-      startHeight = rect.height;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startWidth = videoContainer.offsetWidth;
+      const startHeight = videoContainer.offsetHeight;
       e.preventDefault();
+
+      const onMouseMove = (e) => {
+        if (!isResizing) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        let newWidth = startWidth + dx;
+        let newHeight = startHeight + dy;
+        newWidth = Math.max(320, Math.min(newWidth, window.innerWidth * 0.95));
+        newHeight = Math.max(180, Math.min(newHeight, window.innerHeight * 0.8));
+        videoContainer.style.width = newWidth + 'px';
+        videoContainer.style.height = newHeight + 'px';
+      };
+
+      const onMouseUp = () => {
+        isResizing = false;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
     });
 
-    document.addEventListener('mousemove', (e) => {
-      if (!isResizing) return;
-      
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-      
-      let newWidth = startWidth + dx;
-      let newHeight = startHeight + dy;
-      
-      // Enforce reasonable limits
-      newWidth = Math.max(320, Math.min(newWidth, window.innerWidth * 0.95));
-      newHeight = Math.max(180, Math.min(newHeight, window.innerHeight * 0.8));
-      
-      videoContainer.style.width = newWidth + 'px';
-      videoContainer.style.height = newHeight + 'px';
-    });
-
-    document.addEventListener('mouseup', () => {
-      isResizing = false;
+    // Focus search on load
+    window.addEventListener('load', () => {
+      searchBox.focus();
     });
   </script>
 </body>
